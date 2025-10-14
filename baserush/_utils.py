@@ -10,7 +10,8 @@ from typing import Iterable, Optional, Sequence, Union, Dict, Any, List
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold
+from sklearn.metrics import r2_score
 
 # organizing functions
 __all__ = ["quick_lm", "quick_tree", "quick_neighbors", "tuning_results"]
@@ -58,31 +59,23 @@ def _resolve_feature_names(
 # used in lr_summary | tree_summary | knn_summary | simple_scaler | transtorm | simputer
 def _ensure_df(X: ArrayLike) -> pd.DataFrame:
     """Return a DataFrame (copy=False); if already a Series/ndarray, wrap with default names."""
-    if isinstance(X, pd.DataFrame):
-        return X
-    if isinstance(X, pd.Series):
-        return X.to_frame()
-    arr = np.asarray(X)
-    n_rows = arr.shape[0]
-    if arr.ndim == 1:
-        arr = arr.reshape(-1, 1)
-    cols = [f"x{i}" for i in range(arr.shape[1])]
-    return pd.DataFrame(arr, columns=cols)
+    try:
+        if isinstance(X, pd.DataFrame):
+            return X
+        if isinstance(X, pd.Series):
+            return X.to_frame()
+        arr = np.asarray(X)
+        n_rows = arr.shape[0]
+        if arr.ndim == 1:
+            arr = arr.reshape(-1, 1)
+        cols = [f"x{i}" for i in range(arr.shape[1])]
+        return pd.DataFrame(arr, columns=cols)
 
-
-# used in lr_summary | tree_summary | knn_summary
-def _init_result_row(schema_features: Sequence[str]) -> Dict[str, Any]:
-    """
-    Creates a base row with all features initialized to 0.0 so that
-    concatenated results align consistently across runs/models.
-    """
-    row = {"Intercept": 0.0}
-    for f in schema_features:
-        row[f] = 0.0
-    return row
+    except:
+        return X if isinstance(X, pd.DataFrame) else pd.DataFrame()
 
 # used in tree_summary | knn_summary
-def _prefix_params(params: Dict[str, Any], prefix: str = "param_") -> Dict[str, Any]:
+def _prefix_params(params: Dict[str, Any], prefix: str = "hp_") -> Dict[str, Any]:
     """Avoids key collisions with model info by prefixing hyperparameter keys."""
     return {f"{prefix}{k}": v for k, v in params.items()}
 

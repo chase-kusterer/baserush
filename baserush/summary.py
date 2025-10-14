@@ -13,7 +13,7 @@ from sklearn.base import BaseEstimator
 from sklearn.model_selection import train_test_split
 
 # utility imports
-from ._utils import _safe_round, _resolve_feature_names, _ensure_df, _init_result_row, _prefix_params
+from ._utils import _safe_round, _resolve_feature_names, _ensure_df, _prefix_params
 
 # organizing data types
 ArrayLike = Union[pd.DataFrame, pd.Series, np.ndarray, List[float], List[List[float]]]
@@ -106,8 +106,16 @@ def lr_summary(
     feature_names = _resolve_feature_names(X_train, model)
     schema_features = list(f_names) if f_names is not None else feature_names
 
-    # instantiating model result labels
-    row = _init_result_row(schema_features)
+    row = {
+            "Model_Name":  '',
+            "Model_Class": '',
+            "Model_Type":  '',
+            "train_RSQ":   0.0,
+            "test_RSQ":    0.0,
+            "tt_gap":      0.0,
+            "used_tts":    False,
+          }
+
     row.update(
         {
             "Model_Name" : model_name,
@@ -129,6 +137,10 @@ def lr_summary(
             except Exception:
                 pass
         row["Intercept"] = _safe_round(intercept, 6)
+
+    # instantiating model result labels
+    for f in schema_features:
+        row[f] = 0.0
 
     # model cefficients
     if hasattr(model, "coef_"):
@@ -158,11 +170,8 @@ def lr_summary(
     if not results_df.empty:
         results_df = pd.concat(objs=[results_df, results_row], axis=0, ignore_index=True)
 
-        # stabilizing column order for reproducibility
-        results_df = results_df.reindex(sorted(results_df.columns), axis=1)
-
     else:
-        results_df = results_row.reindex(sorted(results_row.columns), axis=1)
+        results_df = results_row
 
     # returning results
     return results_df
@@ -173,7 +182,7 @@ def lr_summary(
 def tree_summary(
     x: ArrayLike,
     y: ArrayLike,
-    model_type = None,
+    model: BaseEstimator,
     model_name: str = "",
     results_df: Optional[pd.DataFrame] = None,
     f_names: Optional[Sequence[str]] = None,
@@ -221,14 +230,6 @@ def tree_summary(
     -------
     A DataFrame with one row per call; will concatenate over multiple calls.
     """
-
-    # Default model type == DecisionTreeRegressor
-    model = model_type
-
-    if model_type is None:
-        from sklearn.tree import DecisionTreeRegressor
-        model_type = DecisionTreeRegressor
-
     # ensuring DataFrame structure
     results_df = _ensure_df(results_df)
 
@@ -262,7 +263,16 @@ def tree_summary(
     # feature schema
     feature_names = _resolve_feature_names(X_train, model)
     schema_features = list(f_names) if f_names is not None else feature_names
-    row = _init_result_row(schema_features)
+
+    row = {
+            "Model_Name":  '',
+            "Model_Class": '',
+            "Model_Type":  '',
+            "train_RSQ":   0.0,
+            "test_RSQ":    0.0,
+            "tt_gap":      0.0,
+            "used_tts":    False,
+          }
 
     # instantiating model result labels
     row.update(
@@ -277,6 +287,14 @@ def tree_summary(
         }
     )
 
+    # hyperparameters (prefixed)
+    if tree_params and hasattr(model, "get_params"):
+        row.update(_prefix_params(model.get_params()))
+
+
+    for f in schema_features:
+        row[f] = 0.0
+
     # feature importances
     if hasattr(model, "feature_importances_"):
         importances = np.asarray(getattr(model, "feature_importances_"))
@@ -287,10 +305,6 @@ def tree_summary(
                 except Exception:
                     pass
 
-    # hyperparameters (prefixed)
-    if tree_params and hasattr(model, "get_params"):
-        row.update(_prefix_params(model.get_params()))
-
     # preparing results
     results_row = pd.DataFrame(data=[row])
 
@@ -298,11 +312,8 @@ def tree_summary(
     if not results_df.empty:
         results_df = pd.concat(objs=[results_df, results_row], axis=0, ignore_index=True)
 
-        # stabilizing column order for reproducibility
-        results_df = results_df.reindex(sorted(results_df.columns), axis=1)
-
     else:
-        results_df = results_row.reindex(sorted(results_row.columns), axis=1)
+        results_df = results_row
 
     # returning results
     return results_df
@@ -387,7 +398,16 @@ def knn_summary(
     # feature schema
     feature_names = _resolve_feature_names(X_train, model)
     schema_features = list(f_names) if f_names is not None else feature_names
-    row = _init_result_row(schema_features)
+
+    row = {
+            "Model_Name":  '',
+            "Model_Class": '',
+            "Model_Type":  '',
+            "train_RSQ":   0.0,
+            "test_RSQ":    0.0,
+            "tt_gap":      0.0,
+            "used_tts":    False,
+          }
 
     # instantiating model result labels
     row.update(
@@ -402,7 +422,6 @@ def knn_summary(
         }
     )
 
-    #!#
     # hyperparameters (prefixed)
     if include_params and hasattr(model, "get_params"):
         row.update(_prefix_params(model.get_params()))
@@ -414,11 +433,8 @@ def knn_summary(
     if not results_df.empty:
         results_df = pd.concat(objs=[results_df, results_row], axis=0, ignore_index=True)
 
-        # stabilizing column order for reproducibility
-        results_df = results_df.reindex(sorted(results_df.columns), axis=1)
-
     else:
-        results_df = results_row.reindex(sorted(results_row.columns), axis=1)
+        results_df = results_row
 
     # returning results
     return results_df

@@ -7,12 +7,13 @@
 # imports 
 from __future__ import annotations
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union, Iterable, Set
-import numpy  as np                            # numerical essentials
-import pandas as pd                            # data science essentials
-import statsmodels.api as sm                   # p-values
-from sklearn.model_selection import KFold      # cross validation
-from sklearn.metrics import r2_score           # r-squared
-from sklearn.tree import DecisionTreeRegressor # decision tree regressor
+import numpy  as np                                         # numerical essentials
+import pandas as pd                                         # data science essentials
+import statsmodels.api as sm                                # p-values
+from sklearn.model_selection import train_test_split, KFold # cross validation
+from sklearn.metrics import r2_score                        # r-squared
+from sklearn.tree import DecisionTreeRegressor              # decision tree regressor
+import matplotlib.pyplot as plt                             # graphical essentials
 
 # utility imports
 from ._utils import _cv_metrics_for_leaf, _select_top_n_unique, _safe_round
@@ -239,7 +240,8 @@ def quick_tree(
 ) -> pd.DataFrame:
     """
     Quickly tunes a tree-based model using a two-stage cross-validated
-    procedure.
+    procedure. Often returns multiple trees since multiple metrics are used in
+    evaluating which tree is "best".
 
     PARAMETERS
     ----------
@@ -363,7 +365,7 @@ def quick_tree(
                                     top_by_r2_rng] ,
                             axis = 0).drop_duplicates()\
                                      .sort_values(by='mean_RSS')\
-                                     .reset_index()
+                                     .reset_index(drop=True)
     
     return tuned_depth
 
@@ -485,9 +487,9 @@ def quick_neighbors(x_data: ArrayLike,
     if verbose == True:
         print(f"""
     The optimal number of neighbors is {opt_neighbors}.
-    Training R-Square: {train_rsq[opt_neighbors - 1]}
-    Testing  R-Square: {test_rsq[opt_neighbors - 1]}
-    Train-Test Gap:    {tt_gap[opt_neighbors - 1]}
+    Training R-Square: {_safe_round(train_rsq[opt_neighbors - 1], 4)}
+    Testing  R-Square: {_safe_round(test_rsq[opt_neighbors  - 1], 4)}
+    Train-Test Gap:    {_safe_round(tt_gap[opt_neighbors    - 1], 4)}
 """)
     
     # returning fitted model
