@@ -3,7 +3,7 @@
 ![PyPI](https://img.shields.io/pypi/v/baserush)
 ![License](https://img.shields.io/github/license/chase-kusterer/baserush)
 
-Stable base modeling made quick and easy.
+**Stable** base modeling made quick and easy.
 
 `baserush` is an easy-to-use regression pipeline for preprocessing, optimizing, and summarizing machine learning models within the `scikit-learn` framework. This package is ideal for efficiently building and comparing **stable models** from different model types.
 
