@@ -1,7 +1,7 @@
 # baserush
 
 ![PyPI](https://img.shields.io/pypi/v/baserush)
-![License](https://img.shields.io/github/license/chase-kusterer/baserush/)
+![License](https://img.shields.io/github/license/chase-kusterer/baserush)
 
 Stable base modeling made quick and easy!
 
