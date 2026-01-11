@@ -1,6 +1,6 @@
 # baserush
 
-![PyPI](https://img.shields.io/pypi/v/baserush)
+![PyPI - Version](https://img.shields.io/pypi/v/baserush)
 
 Stable base modeling made quick and easy!
 
