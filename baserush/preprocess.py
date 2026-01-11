@@ -34,17 +34,24 @@ def simple_scaler(
     return_scaler: bool = False,
 ) -> Union[pd.DataFrame, Tuple[pd.DataFrame, StandardScaler]]:
     """
+
     Standardizes a dataset (μ = 0, σ² = 1).
     Requires sklearn.preprocessing.StandardScaler()
     
     PARAMETERS
     ----------
-    df            | DataFrame  | data to be used for scaling  | No default.
-    include       | list-like  | features to scale            | Default = None
-    with_mean     | bool       | scale w/ feature means       | Default = True
-    with_std      | bool       | scale w/ standard deviations | Default = True
-    copy          | bool       | features to scale            | Default = True
-    return_scaler | bool       | returns fitted scaler object | Default = False
+    df : pandas.DataFrame
+        Data to be used for scaling.
+    include : list-like
+        Features to scale.
+    with_mean : bool
+        Scale with feature means.
+    with_std : bool
+        Scale w/ standard deviations.
+    copy : bool
+        Scale on a copy of the data instead of in place.
+    return_scaler : bool
+        Whether to also return a fitted scaler object.
 
     RETURNS
     -------
@@ -81,16 +88,22 @@ def transtorm(
     return_transformer: bool = False,
 ) -> Union[pd.DataFrame, Tuple[pd.DataFrame, PowerTransformer]]:
     """
+
     Performs a Yeo-Johnson transformation on numeric features to reduce
     skewness.
 
     PARAMETERS
     ----------
-    df            | DataFrame | data to be transformed       | No default.
-    include       | list-like | features to transform        | Default = None
-    verbose       | bool      | print a summary of results   | Default = False
-    standardize   | bool      | standardizes each feature    | Default = True
-    return_transformer | bool | returns fitted scaler object | Default = False
+    df : DataFrame
+        Sata to be transformed.
+    include : list-like
+        Features to transform.
+    verbose : bool
+        Whether to print a summary of the results.
+    standardize : bool
+        Whether to standardize each feature before transforming.
+    return_transformer : bool
+        Whether to also return a fitted scaler object.
 
     RETURNS
     -------
@@ -135,18 +148,24 @@ def simputer(
     return_imputer: bool = False,
 ) -> Union[pd.DataFrame, Tuple[pd.DataFrame, SimpleImputer]]:
     """
-    Imputes missing values on numeric columns (default: mean). Strategies
-    include: 'mean'|'median'|'most_frequent'|'constant'.
+
+    Imputes missing values on numeric columns (default: mean). Available
+    strategies include: 'mean'|'median'|'most_frequent'|'constant'.
 
     PARAMETERS
     ----------
-    df             | DataFrame | data to be imputed            | No default.
-    include        | list-like | features to impute            | Default = None
-    strategy       | str       | imputation strategy to apply  | Default = "mean"
-    fill_value     | numeric   | fill for strategy='constant'  | Default = None
-    flag_feature   | bool      | binary flag identifying an    | Default = False
-                   |           | originally missing value      |
-    return_imputer | bool      | returns fitted imputer object | Default = False
+    df : DataFrame
+        DataFrame containing features to be imputed.
+    include : list-like
+        Optional subset of features to impute.
+    strategy : str
+        Imputation strategy to apply.
+    fill_value : numeric
+        Fill value if strategy='constant'
+    add_indicator : bool
+        Binary flag feature identifying values that were originally missing.
+    return_imputer : bool
+        Whether to also return a fitted imputer object.
 
     RETURNS
     -------
@@ -194,14 +213,17 @@ def catcoder(data: ArrayLike,
              drop_most:   bool = False
 ) -> pd.DataFrame:
     """
+
     Encodes categorical features for use in machine learning models.
     
     PARAMETERS
     ----------
-    data          | DF|Series | feature(s) to be categorically encoded  | No default.
-    min_samples   | numeric   | minimum samples required for each new   | Default = 100
-                              | categorical feature.                    |
-    drop_most     | bool      | drops most frequent categorical feature | Default = False
+    data : DF|Series
+        Feature(s) to be categorically encoded.
+    min_samples : numeric
+        Minimum number of samples required to create a new categorical feature.
+    drop_most : bool
+        Whether to drop the most frequent categorical feature.
     
     RETURNS
     -------

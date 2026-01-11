@@ -32,6 +32,10 @@ def quick_lm(
     threshold_out: float = 0.05,
     max_iter: int = 100,
     verbose: bool = True,
+    tts: bool = True,
+    test_size: float = 0.45,
+    max_gap: float = 0.05,
+    random_state: int = 702
 ) -> List[str]:
     """
     Builds a linear model using stepwise feature selection based on
@@ -51,11 +55,25 @@ def quick_lm(
         Exclude a feature if its p-value > threshold_out.
     verbose : bool
         Whether to print the sequence of inclusions and exclusions.
+    tts : bool
+        Whether to perform train_test_split.
+    test_size : float
+        test proportion (tts)
+    max_gap : float
+        Maximum  train-test gap when evaluating a model.
+    random_state : int
+        random seed (tts)
 
     RETURNS
     -------
-    list
-        The list of selected features.
+    A dictionary containing the following:
+    
+    selected_features : list
+        Features included after the final iteration.
+    history : pandas.DataFrame
+        Iteration history, including training and testing R-Squared values.
+    model : statsmodels object
+        Fitted model from final iteration.
 
     Notes
     -----
@@ -71,24 +89,40 @@ def quick_lm(
     if not isinstance(x_data, pd.DataFrame):
         x_data = pd.DataFrame(x_data)
 
+    # testing and validation sets
+    if tts:
+        X_train, X_test, y_train, y_test = train_test_split(x_data,
+                                                            y_data,
+                                                            test_size=test_size,
+                                                            random_state=random_state)
+
+    # full dataset
+    else:
+        X_train = X_test = x
+        y_train = y_test = y
+
     # preparing feature set
     included: List[str] = force_in if force_in is not None else []
 
-    # setting up iteration counter
+    # lists to store metrics
+    train_rsq = []
+    test_rsq  = []
+    tt_gap    = []
+
+    # setting up history and iteration counter
+    history    = []
     iter_count = 0
 
     # looping over each x-feature until there are no more significant p-values
     while True:
         changed = False
 
-        # interating counter
-        iter_count += 1
-
         # message and break if iteration limit is reached
         if iter_count > max_iter:
             if verbose:
                 print(f"Max iterations ({max_iter}) reached; stopping.")
             break
+
 
         # ---------------- forward step ---------------- #
         # forward step: adding an x-feature
@@ -108,19 +142,19 @@ def quick_lm(
         if not new_pvals.empty:
             best_pval = new_pvals.min()
             if best_pval < threshold_in:
-                best_feature = new_pvals.idxmin()  # Use idxmin() instead of argmin()
+                best_feature = new_pvals.idxmin()
                 included.append(best_feature)
                 changed = True
                 if verbose:
-                    print('Add  {:30} with p-value {:.6}'.format(best_feature, best_pval))
+                    print(f'Add {best_feature:30} with p-value {best_pval:.6f}')
 
         # ---------------- backward step ---------------- #
         # backward step: potentially removing an x-feature
         if included:
-            model = sm.OLS(y_data, sm.add_constant(x_data[included])).fit()
+            model = sm.OLS(y_train, sm.add_constant(X_train[included])).fit()
 
             # excluding intercept p-value (first element)
-            pvals = model.pvalues.iloc[1:]
+            pvals = model.pvalues.iloc[1:].abs()
 
             # ensuring the model is not empty
             if not pvals.empty:
@@ -130,16 +164,45 @@ def quick_lm(
                     included.remove(worst_feature)
                     changed = True
                     if verbose:
-                        print('Drop {:30} with p-value {:.6}'.format(worst_feature, worst_pval))
-
+                        print(f'Drop {worst_feature:30} with p-value {worst_pval:.6f}')
 
         # stopping the loop if optimized
         if not changed:
             break
-
+        
+        # stability check (calculating metrics after each step)
+        if included:
+            # fitting current best model
+            final_model = sm.OLS(y_train, sm.add_constant(X_train[included])).fit()
+            
+            # training and testing R-squared + tt_gap
+            train_r2 = final_model.rsquared
+            test_preds = final_model.predict(sm.add_constant(X_test[included]))
+            test_r2 = r2_score(y_test, test_preds)
+            tt_gap = abs(train_r2 - test_r2)
+            
+            history.append({
+                'iteration': iter_count,
+                'feature_count': len(included),
+                'train_r2': train_r2,
+                'test_r2': test_r2,
+                'gap': tt_gap
+            })
+            
+        # interating counter
+        iter_count += 1
+            
+            
+    if verbose:
+        status = "PASS" if tt_gap <= max_gap else "WARNING: GAP EXCEEDED"
+        print(f"\nIterations: {iter_count} | Features: {len(included)} | Train-Test Gap: {tt_gap:.4f} | {status}")
 
     # returning stepwise model's x-features
-    return included
+    return {
+        "selected_features": included,
+        "history": pd.DataFrame(history),
+        "model": sm.OLS(y_train, sm.add_constant(X_train[included])).fit() if included else None
+    }
 
 
 ## tuning_results ##
@@ -230,10 +293,10 @@ def quick_tree(
     x_data,
     y_data: Sequence[float],
     model_type: Callable[..., object] = None,
-    max_leaf_samples: int = 50,
     leaf_values: Optional[Sequence[int]] = None,
-    max_depth: int = 20,
+    max_leaf_samples: int = 50,
     depths: Optional[Sequence[int]] = None,
+    max_depth: int = 20,
     cv_folds: int = 3,
     n: int = 5,
     random_state: int = 702,
@@ -245,16 +308,26 @@ def quick_tree(
 
     PARAMETERS
     ----------
-    x_data            | array-like | feature matrix                               | No default
-    y_data            | array-like | target vector                                | No default
-    model_type        | model      | tree-based model type                        | Default = DTree (Reg)
-    max_leaf_samples  | int        | largest min_samples_leaf if leaf_values None | Default = 50
-    leaf_values       | seq[int]   | explicit set of min_samples_leaf candidates  | Default = None
-    max_depth         | int        | largest depth tested if depths None          | Default = 20
-    depths            | seq[int]   | explicit set of depths to evaluate           | Default = None
-    cv_folds          | int        | number of CV folds                           | Default = 3
-    n                 | int        | top-n unique per metric (no ties beyond n)   | Default = 5
-    random_state      | int        | RNG seed for KFold and models                | Default = 702
+    x_data : array-like
+        DataFrame with candidate features.
+    y_data : array-like
+        The target variable.
+    model_type : model
+        Tree-based model type (default = DecisionTreeRegressor).
+    leaf_values : seq[int]
+        Explicit set of min_samples_leaf values to evaluate.
+    max_leaf_samples : int
+        If leaf_values=None, Maximum min_samples_leaf to evaluate [0:max_leaf_samples].
+    depths : seq[int]
+        Explicit set of tree depths to evaluate.
+    max_depth : int
+        If depths None, Largest tree depth to evaluate [0:max_depth].
+    cv_folds : int
+        Number of cross-validation folds.
+    n : int
+        Top-n unique models to retain per metric (no ties beyond n).
+    random_state : int
+        Random seed for model and cross-validation.
 
     RETURNS
     -------
@@ -296,7 +369,7 @@ def quick_tree(
         leaf_rows.append(metrics)
     leaf_df = pd.DataFrame(leaf_rows)
 
-    # Select top-n unique leafs per metric
+    # select top-n unique leafs per metric
     top_by_mean_rss = _select_top_n_unique(leaf_df, "mean_RSS",  n, asc=True)
     top_by_mean_r2  = _select_top_n_unique(leaf_df, "mean_R2",   n, asc=False)
     top_by_rss_rng  = _select_top_n_unique(leaf_df, "RSS_range", n, asc=True)
@@ -391,18 +464,30 @@ def quick_neighbors(x_data: ArrayLike,
 
     PARAMETERS
     ----------
-    x_data        | array   | X-data before train-test split  | No default.
-    y_data        | array   | y-data before train-test split  | No default.
-    model_type    | model   | model object to instantiate     | KNeighborsRegressor
-    max_neighbors | int     | max neighbors to evaluate       | Default = 50
-    power_p       | numeric | power parameter for Minkowski   | Default = 2
-    threshold     | float   | tt gap threshold between (0, 1) | Default = 0.05
-    standardize   | bool    | standardizes x_data (μ=0, σ²=1) | Default = True
-    visualize     | bool    | renders a line graph of results | Default = True
-    verbose       | bool    | prints optimal neigbors results | Default = True
-    tts           | bool    | perform train_test_split        | Default = True
-    test_size     | float   | test proportion (tts)           | Default = 0.25
-    random_state  | int     | random seed (tts)               | Default = 702
+    x_data : array-like
+        DataFrame with candidate features.
+    y_data : array-like
+        The target variable.
+    model_type : model
+        model object to instantiate (default = KNeighborsRegressor)
+    max_neighbors : int
+        Maximum number of neighbors to evaluate [0:max_neighbors].
+    power_p : numeric
+        Power parameter for Minkowski distance.
+    threshold : float
+        Train-test gap threshold to determine model stability.
+    standardize : bool
+        Whether to standardize the X-data before modeling (μ=0, σ²=1).
+    visualize : bool
+        Whether to render a line graph of neighbor results.
+    verbose : bool
+        Whether to print optimal neigbors results.
+    tts : bool
+        Whether to perform train_test_split.
+    test_size : float
+        Test proportion for train-test split.
+    random_state : int
+        Random seed for train-test split.
 
     RETURNS
     -------

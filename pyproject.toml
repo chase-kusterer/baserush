@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name        = "baserush"
-version     = "0.0.1"
+version     = "0.0.2"
 description = "An easy-to-use regression pipeline to preprocess, analyze, and optimize models."
 authors = [
     {name  = "Chase Kusterer", email = "chase.kusterer24@gmail.com"}
@@ -30,14 +30,12 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.9",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
-  "Topic :: Scientific/Engineering :: Machine Learning",
   "Topic :: Scientific/Engineering :: Information Analysis",
   "Operating System :: OS Independent"
 ]
 
 [project.urls]
 "Homepage"   = "https://github.com/chase-kusterer/basemodeler"
-"Repository" = "https://github.com/chase-kusterer/basemodeler"
 "Issues"     = "https://github.com/chase-kusterer/basemodeler/issues"
 
 
